@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlagiScan — AI-Powered Plagiarism Detector</title>
+  <meta name="description" content="Instantly detect plagiarism in your text using the Copyleaks API and get actionable tips to remove it. Free, fast, and highly accurate." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>" />
+</head>
+<body>
+
+<div class="bg-orbs" aria-hidden="true"></div>
+
+<div id="app">
+
+  <!-- ── Navigation ── -->
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-icon" aria-hidden="true">🔍</div>
+      PlagiScan
+    </div>
+    <div class="nav-badge">Powered by Copyleaks</div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <section class="hero" aria-labelledby="hero-heading">
+    <div class="hero-eyebrow" aria-label="Status indicator">AI-Powered Analysis</div>
+    <h1 id="hero-heading">
+      Detect &amp; Remove<br>
+      <span class="grad-text">Plagiarism Instantly</span>
+    </h1>
+    <p class="hero-sub">
+      Paste your text below. We'll scan it against billions of web pages
+      and academic databases, then give you precise tips to make it 100% original.
+    </p>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar" role="list">
+      <div class="stat" role="listitem">
+        <div class="stat-val">99.3%</div>
+        <div class="stat-label">Accuracy</div>
+      </div>
+      <div class="stat" role="listitem">
+        <div class="stat-val">60B+</div>
+        <div class="stat-label">Pages Scanned</div>
+      </div>
+      <div class="stat" role="listitem">
+        <div class="stat-val">&lt;30s</div>
+        <div class="stat-label">Avg. Scan Time</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Input Section ── -->
+  <section id="input-section" aria-label="Text input for plagiarism check">
+    <div class="input-card">
+      <div class="input-header">
+        <label class="input-label" for="text-input">Your Text</label>
+        <span class="word-count" id="word-count" aria-live="polite">0 words</span>
+      </div>
+
+      <textarea
+        id="text-input"
+        placeholder="Paste or type your essay, article, assignment, or any text here…&#10;&#10;Tip: The more text you provide, the more accurate the analysis."
+        aria-label="Enter text to check for plagiarism"
+        spellcheck="true"
+      ></textarea>
+
+      <div class="input-actions">
+        <span class="input-hint" aria-hidden="true">
+          ⌨️ Press <kbd style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:0.75rem;">Ctrl + Enter</kbd> to scan
+        </span>
+        <div style="display:flex;gap:10px;">
+          <button id="clear-btn" class="btn btn-secondary btn-sm" aria-label="Clear text input">
+            🗑️ Clear
+          </button>
+          <button id="scan-btn" class="btn btn-primary" aria-label="Start plagiarism scan">
+            🔍 Analyse Text
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Loader ── -->
+  <section id="loader" role="status" aria-live="polite" aria-label="Analysing your text">
+    <div class="spinner-ring" aria-hidden="true"></div>
+    <p style="font-size:1.05rem;font-weight:700;margin-bottom:6px;">Analysing Your Text</p>
+    <p style="color:var(--text-secondary);font-size:0.85rem;">Scanning against 60+ billion web pages and academic sources…</p>
+
+    <div class="loader-steps" aria-label="Analysis progress">
+      <div class="loader-step" id="step-0">
+        <div class="step-icon" aria-hidden="true"></div>
+        <span>Submitting to Copyleaks engine</span>
+      </div>
+      <div class="loader-step" id="step-1">
+        <div class="step-icon" aria-hidden="true"></div>
+        <span>Cross-referencing billions of sources</span>
+      </div>
+      <div class="loader-step" id="step-2">
+        <div class="step-icon" aria-hidden="true"></div>
+        <span>Building similarity report &amp; tips</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Results ── -->
+  <section id="results" aria-label="Plagiarism analysis results">
+
+    <!-- Score Row -->
+    <div class="score-row">
+      <div class="score-ring-wrap" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-bg"   cx="60" cy="60" r="55" />
+          <circle class="ring-fill" cx="60" cy="60" r="55" id="ring-fill" />
+        </svg>
+        <div class="score-label">
+          <div class="score-pct" id="score-pct" aria-label="Plagiarism percentage">—</div>
+          <div class="score-word">plagiarism</div>
+        </div>
+      </div>
+
+      <div class="score-info">
+        <div class="score-title" id="score-title">Analysing…</div>
+        <div class="score-desc"  id="score-desc"></div>
+        <div class="score-chips" id="score-chips"></div>
+
+        <div class="result-actions" style="margin-top:20px;">
+          <button id="new-scan-btn" class="btn btn-secondary btn-sm" aria-label="Start a new scan">
+            ↩ New Scan
+          </button>
+          <button
+            onclick="window.print()"
+            class="btn btn-secondary btn-sm"
+            aria-label="Print this report"
+          >
+            🖨️ Print Report
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Highlighted Text Viewer -->
+    <div class="text-viewer-card">
+      <div class="section-title">
+        <div class="dot" aria-hidden="true"></div>
+        Highlighted Analysis
+      </div>
+      <div class="legend" role="list" aria-label="Colour legend for highlighted text">
+        <div class="legend-item" role="listitem">
+          <div class="legend-dot ld-high" aria-hidden="true"></div>
+          High similarity
+        </div>
+        <div class="legend-item" role="listitem">
+          <div class="legend-dot ld-medium" aria-hidden="true"></div>
+          Moderate similarity
+        </div>
+        <div class="legend-item" role="listitem">
+          <div class="legend-dot ld-low" aria-hidden="true"></div>
+          Low similarity
+        </div>
+      </div>
+      <div id="highlighted-text" aria-label="Your text with plagiarism highlighted"></div>
+    </div>
+
+    <!-- Tips Panel -->
+    <div class="tips-card">
+      <div class="section-title">
+        <div class="dot" aria-hidden="true"></div>
+        Actionable Tips to Remove Plagiarism
+      </div>
+      <div class="tips-grid" id="tips-grid" role="list" aria-label="Plagiarism removal tips"></div>
+    </div>
+
+    <!-- Sources -->
+    <div class="sources-card">
+      <div class="section-title">
+        <div class="dot" aria-hidden="true"></div>
+        Matched Sources
+      </div>
+      <div class="source-list" id="source-list" aria-label="Sources where matches were found"></div>
+    </div>
+
+  </section>
+
+  <!-- ── Error State ── -->
+  <section id="error-state" role="alert" aria-label="Error">
+    <div class="error-icon" aria-hidden="true">⚠️</div>
+    <div class="error-title">Something went wrong</div>
+    <p class="error-msg" id="error-msg">Could not complete the analysis. Please try again.</p>
+    <div style="margin-top:24px;display:flex;gap:12px;">
+      <button id="try-again-btn" class="btn btn-primary" aria-label="Try again">
+        ↩ Try Again
+      </button>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <p>
+      PlagiScan — Powered by the
+      <a href="https://copyleaks.com" target="_blank" rel="noopener">Copyleaks API</a>.
+      Built for integrity &amp; originality.
+    </p>
+    <p style="margin-top:8px;color:var(--text-muted);">
+      Always cite your sources. Original writing matters. 🎓
+    </p>
+  </footer>
+
+</div><!-- /#app -->
+
+<script src="app.js"></script>
+</body>
+</html>
