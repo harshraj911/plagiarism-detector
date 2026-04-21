@@ -317,33 +317,33 @@ function getTips(score, highCount) {
   const tips = [
     {
       icon: '✍️', color: 'violet',
-      title: 'Paraphrase the Flagged Sections',
-      body:  'Rewrite highlighted sentences in your own words while preserving the original meaning. Change sentence structure, vocabulary, and voice (active vs passive).',
-      example: 'Original: "The process was conducted by researchers."\nRewritten: "Researchers carried out the process."'
+      title: 'Paraphrase & Refine',
+      body:  'Rewrite highlighted sections in your own unique voice. Focus on changing sentence structures and vocabulary while maintaining the core message.',
+      example: 'Original: "The study showed X."\nRewritten: "Research indicates that X is a primary factor."'
     },
     {
-      icon: '📚', color: 'cyan',
-      title: 'Add Proper Citations',
-      body:  'If you intentionally used someone else\'s idea or phrasing, cite it correctly using APA, MLA, or Chicago format. Citing a source does not constitute plagiarism.',
-      example: 'APA: (Author, Year) | MLA: (Author Page) | Chicago: Footnote/endnote'
+      icon: '🧠', color: 'cyan',
+      title: 'Infuse Your Perspective',
+      body:  'Add your personal insights or professional analysis to the information you present. Original commentary is the best way to ensure 100% uniqueness.',
+      example: 'Merge data from sources → add a conclusion based on YOUR experience.'
     },
     {
       icon: '💡', color: 'amber',
-      title: 'Synthesise Multiple Sources',
-      body:  'Instead of relying on one source, blend ideas from several references to create analysis that reflects your own understanding and perspective.',
-      example: 'Combine ideas from 3+ sources → express the synthesis as YOUR conclusion.'
+      title: 'Synthesise Multiple Ideas',
+      body:  'Instead of just reporting one source, blend concepts from diverse references to create a new, comprehensive narrative that reflects your understanding.',
+      example: 'Combine 3+ viewpoints into a single, cohesive analysis.'
     },
     {
       icon: '🔄', color: 'green',
-      title: 'Change Sentence Structure',
-      body:  'Even with the same core idea, restructure sentences: break long ones into shorter segments, combine short ones, or shift from passive to active voice.',
-      example: 'Before: "It was found that X causes Y."\nAfter: "X directly causes Y, as evidenced by…"'
+      title: 'Structure for Originality',
+      body:  'Restructure sentences and paragraphs. Break long segments into punchy bullet points or combine short sentences to improve flow and uniqueness.',
+      example: 'Passive voice → Active voice, or list format → Narrative flow.'
     },
     {
-      icon: '🧠', color: 'pink',
-      title: 'Add Your Own Analysis',
-      body:  'Follow every cited idea with your own commentary, critique, or interpretation. Original analysis dramatically reduces similarity scores and adds academic value.',
-      example: 'Quote → Citation → Your own 2-3 sentence analysis or critique.'
+      icon: '🔍', color: 'pink',
+      title: 'Deep-Dive Analysis',
+      body:  'Follow every external fact with an original explanation or "Why it matters" section. This adds value for your readers and reduces similarity scores.',
+      example: 'Fact/Quote → "This is significant because…" → Your 2-sentence analysis.'
     }
   ];
 
@@ -351,8 +351,8 @@ function getTips(score, highCount) {
   if (score > 35 || highCount > 1) {
     tips.push({
       icon: '🔍', color: 'amber',
-      title: 'Use a Plagiarism Thesaurus Approach',
-      body:  'Swap out specific nouns and adjectives with domain-appropriate synonyms. Combine with restructuring for best results. Avoid simply replacing single words — full rephrasing is more effective.',
+      title: 'Dynamic Vocabulary Refresh',
+      body:  'Swap out overused phrases with industry-specific synonyms. This helps in tailoring the content to your specific audience while avoiding generic matches.',
       example: 'Flagged: "The results demonstrate significant improvements."\nFixed: "Findings reveal substantial gains in performance."'
     });
   }
