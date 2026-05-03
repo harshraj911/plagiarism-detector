@@ -4,6 +4,10 @@
 #  Usage: bash start.sh
 # ─────────────────────────────────────────────────
 
+# Kill any lingering processes
+pkill -f server.py || true
+pkill -f "vite" || true
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -15,21 +19,33 @@ echo "  ██╔═══╝ ██║     ██╔══██║██║   
 echo "  ██║     ███████╗██║  ██║╚██████╔╝██║███████║╚██████╗██║  ██║██║ ╚████║"
 echo "  ╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝"
 echo ""
-echo "  AI Plagiarism Detector · Powered by Copyleaks"
+echo "  Professional Content Integrity Suite"
 echo "────────────────────────────────────────────────────────"
 
 # Check Python 3
 if ! command -v python3 &>/dev/null; then
-  echo "❌  Python 3 is required. Install it with: sudo apt install python3"
+  echo "❌  Python 3 is required."
   exit 1
 fi
 
-echo "✅  Python 3 found: $(python3 --version)"
-echo "🚀  Starting server on http://localhost:5050 …"
-echo "────────────────────────────────────────────────────────"
-echo ""
+# Check Node
+if ! command -v node &>/dev/null; then
+  echo "❌  Node.js is required for the React frontend."
+  exit 1
+fi
 
-# Open browser after a short delay
-(sleep 2 && xdg-open "http://localhost:5050" 2>/dev/null || open "http://localhost:5050" 2>/dev/null) &
+echo "✅  Environment Audit Complete."
+echo "🚀  Launching Backend (Port 5050)..."
+python3 server.py &
 
-python3 server.py
+echo "🚀  Launching Frontend (Vite)..."
+cd frontend
+if [ ! -d "node_modules" ]; then
+  echo "📦  Installing frontend dependencies..."
+  npm install
+fi
+
+# Open browser
+(sleep 3 && xdg-open "http://localhost:5173" 2>/dev/null || open "http://localhost:5173" 2>/dev/null) &
+
+npm run dev -- --port 5173

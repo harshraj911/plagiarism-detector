@@ -1,0 +1,39 @@
+
+✅  PlagiScan Core → http://localhost:5050
+ * Serving Flask app 'server'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5050
+ * Running on http://172.21.164.199:5050
+Press CTRL+C to quit
+127.0.0.1 - - [03/May/2026 23:05:10] "OPTIONS /api/scan HTTP/1.1" 200 -
+DEBUG [ee4679b13e0b48be8a287053cbdfd5d3]: Using Winston Key source: DYNAMIC (UI) (Ends with: ...c559)127.0.0.1 - - [03/May/2026 23:05:10] "POST /api/scan HTTP/1.1" 200 -
+
+DEBUG [ee4679b13e0b48be8a287053cbdfd5d3]: Starting AI Content scan...
+127.0.0.1 - - [03/May/2026 23:05:11] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+DEBUG [ee4679b13e0b48be8a287053cbdfd5d3]: AI Resp: 200 - {"status":200,"length":2758,"score":41.2,"sentences":[{"length":223,"score":47.75,"text":"ndia\" (Greek: Ἰvδίa) is a name derived from the Indus River
+127.0.0.1 - - [03/May/2026 23:05:13] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:14] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:16] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:17] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:19] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:20] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:22] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:23] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:25] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+DEBUG [ee4679b13e0b48be8a287053cbdfd5d3]: Starting Plagiarism scan...
+127.0.0.1 - - [03/May/2026 23:05:26] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:28] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:29] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:31] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:32] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:34] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:35] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:37] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:39] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:40] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:42] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/May/2026 23:05:43] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -
+DEBUG [ee4679b13e0b48be8a287053cbdfd5d3]: Plag Resp: 200 - {"status":200,"scanInformation":{"service":"plagiarism","scanTime":"2026-05-03T17:35:44.456Z","inputType":"text","language":"en"},"result":{"score":99
+127.0.0.1 - - [03/May/2026 23:05:45] "GET /api/status/ee4679b13e0b48be8a287053cbdfd5d3 HTTP/1.1" 200 -

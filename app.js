@@ -1,12 +1,13 @@
 /* ──────────────────────────────────────────────────
-   PLAGIARISM DETECTOR — Frontend Application Logic
+   PLAGISCAN — Frontend Application Logic
+   Plagiarism + AI Detection via Winston AI
    ────────────────────────────────────────────────── */
 
 'use strict';
 
-const API_BASE = 'http://localhost:5050';
-const POLL_INTERVAL_MS = 4000;
-const POLL_MAX = 60;
+const API_BASE = '';  // Same origin
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX = 80;  // ~4 minutes max polling
 
 /* ── DOM References ── */
 const textInput       = document.getElementById('text-input');
@@ -19,21 +20,36 @@ const errorEl         = document.getElementById('error-state');
 const errorMsgEl      = document.getElementById('error-msg');
 const tryAgainBtn     = document.getElementById('try-again-btn');
 const newScanBtn      = document.getElementById('new-scan-btn');
-const ringFill        = document.getElementById('ring-fill');
-const scorePctEl      = document.getElementById('score-pct');
-const scoreTitleEl    = document.getElementById('score-title');
-const scoreDescEl     = document.getElementById('score-desc');
-const scoreChipsEl    = document.getElementById('score-chips');
-const highlightedEl   = document.getElementById('highlighted-text');
-const tipsGridEl      = document.getElementById('tips-grid');
-const sourceListEl    = document.getElementById('source-list');
+const progressBar     = document.getElementById('progress-bar');
+const progressText    = document.getElementById('progress-text');
 const loaderSteps     = document.querySelectorAll('.loader-step');
 
+// Plagiarism score elements
+const ringPlag        = document.getElementById('ring-plag');
+const plagPctEl       = document.getElementById('plag-pct');
+const plagTitleEl     = document.getElementById('plag-title');
+const plagDescEl      = document.getElementById('plag-desc');
+const plagChipsEl     = document.getElementById('plag-chips');
+const plagSentencesEl = document.getElementById('plag-sentences-view');
+const plagCardEl      = document.getElementById('plag-sentences-card');
+
+// AI detection score elements
+const ringAi          = document.getElementById('ring-ai');
+const aiPctEl         = document.getElementById('ai-pct');
+const aiTitleEl       = document.getElementById('ai-title');
+const aiDescEl        = document.getElementById('ai-desc');
+const aiChipsEl       = document.getElementById('ai-chips');
+const aiSentencesEl   = document.getElementById('ai-sentences-view');
+const aiCardEl        = document.getElementById('ai-sentences-card');
+
+const partialErrorEl  = document.getElementById('partial-error');
+const partialErrorTxt = document.getElementById('partial-error-text');
+const tipsGridEl      = document.getElementById('tips-grid');
+
 /* ── State ── */
-let currentScanId   = null;
-let pollCount       = 0;
-let pollTimer       = null;
-let submittedText   = '';
+let currentScanId = null;
+let pollCount     = 0;
+let pollTimer     = null;
 
 /* ── Word Counter ── */
 textInput.addEventListener('input', () => {
@@ -58,6 +74,7 @@ textInput.addEventListener('keydown', e => {
 tryAgainBtn.addEventListener('click', resetToInput);
 newScanBtn.addEventListener('click', resetToInput);
 
+
 /* ────────────────────────────────────────
    SCAN FLOW
    ──────────────────────────────────────── */
@@ -68,43 +85,30 @@ async function startScan() {
     showToast('Please enter at least 5 words to analyse.', 'warn');
     return;
   }
-  submittedText = text;
+
   showLoader();
 
-  // Try real Copyleaks API first; fall back to intelligent demo on any failure
-  let apiSuccess = false;
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
     const resp = await fetch(`${API_BASE}/api/scan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
-      signal: controller.signal
     });
-    clearTimeout(timeout);
 
-    if (resp.ok) {
-      const data = await resp.json();
-      currentScanId = data.scan_id;
-      pollCount     = 0;
-      advanceLoaderStep(1);
-      schedulePoll();
-      apiSuccess = true;
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `Server error (${resp.status})`);
     }
-  } catch (_) {
-    // Fall through to demo mode
-  }
 
-  if (!apiSuccess) {
-    // Graceful demo fallback with animated steps
-    showToast('Running intelligent analysis…', 'info');
-    const analysisDelay = 900 + Math.random() * 600;
-    setTimeout(() => advanceLoaderStep(1), analysisDelay);
-    setTimeout(() => advanceLoaderStep(2), analysisDelay + 1400);
-    setTimeout(() => renderResults(buildMockResult(text)), analysisDelay + 2800);
+    const data = await resp.json();
+    currentScanId = data.scan_id;
+    pollCount = 0;
+    schedulePoll();
+  } catch (err) {
+    showError(`Could not start scan: ${err.message}`);
   }
 }
+
 
 /* ── Poll for results ── */
 function schedulePoll() {
@@ -114,8 +118,9 @@ function schedulePoll() {
 async function doPoll() {
   if (!currentScanId) return;
   pollCount++;
+
   if (pollCount > POLL_MAX) {
-    showError('Analysis timed out. Please try again with a shorter text.');
+    showError('Analysis timed out after 4 minutes. The Winston AI service may be experiencing delays. Please try again.');
     return;
   }
 
@@ -124,250 +129,242 @@ async function doPoll() {
     const data = await resp.json();
 
     if (data.status === 'processing') {
-      if (pollCount === 5)  advanceLoaderStep(1);
-      if (pollCount === 10) advanceLoaderStep(2);
+      const progress = data.progress || Math.min(95, pollCount * 3);
+      updateProgress(progress);
+      updateLoaderSteps(progress);
       schedulePoll();
     } else if (data.status === 'complete') {
-      advanceLoaderStep(2);
-      setTimeout(() => renderResults(parseCopyleaksResult(data.result)), 400);
-    } else if (data.status === 'error' || data.status === 'timeout') {
-      showError(data.error || 'Analysis failed. Try again.');
+      updateProgress(100);
+      setTimeout(() => renderResults(data), 400);
+    } else if (data.status === 'error') {
+      showError(data.error || 'Analysis failed. Please try again.');
     } else {
       schedulePoll();
     }
   } catch (err) {
-    schedulePoll(); // keep trying on network hiccup
+    if (pollCount < POLL_MAX) {
+      schedulePoll(); // retry on network hiccup
+    } else {
+      showError('Lost connection to server.');
+    }
   }
 }
 
-/* ────────────────────────────────────────
-   COPYLEAKS RESULT PARSER
-   ──────────────────────────────────────── */
-function parseCopyleaksResult(apiData) {
-  // Copyleaks v3 response schema
-  const score   = apiData?.scannedDocument?.plagiarismScore || 0;
-  const results = apiData?.results || {};
-  const internet = results.internet || [];
-  const database = results.database || [];
-
-  const sources = [...internet, ...database].map(src => ({
-    url:        src.url || src.title || 'Unknown source',
-    similarity: Math.round((src.matchedWords / (apiData?.scannedDocument?.totalWords || 1)) * 100)
-  })).sort((a, b) => b.similarity - a.similarity).slice(0, 6);
-
-  // Build highlighted spans from matchedText arrays
-  const matchedPhrases = [];
-  [...internet, ...database].forEach(src => {
-    (src.matchedText || []).forEach(mt => {
-      const sev = mt.percentage > 60 ? 'high' : mt.percentage > 30 ? 'medium' : 'low';
-      matchedPhrases.push({ text: mt.text || '', severity: sev });
-    });
-  });
-
-  return { score: Math.round(score * 100), sources, matchedPhrases };
-}
-
-/* ────────────────────────────────────────
-   MOCK RESULT BUILDER (intelligent fallback)
-   ──────────────────────────────────────── */
-function buildMockResult(text) {
-  const words   = text.split(/\s+/).filter(Boolean);
-  const total   = words.length;
-
-  // Score based on text characteristics (common phrases = higher score)
-  const commonWords = ['the','is','are','was','were','have','has','been','will','can','may',
-    'that','this','which','with','from','they','their','there','about','would','could','should'];
-  const commonRatio = words.filter(w => commonWords.includes(w.toLowerCase())).length / total;
-  const baseScore = Math.round(commonRatio * 120 + Math.random() * 25 + 10);
-  const score = Math.min(baseScore, 82);
-
-  // Pick semantically distributed phrase segments
-  const phrases = [];
-  const segCount = Math.min(5, Math.max(2, Math.floor(total / 10)));
-  const usedRanges = [];
-
-  for (let attempt = 0; attempt < segCount * 3 && phrases.length < segCount; attempt++) {
-    const start = Math.floor(Math.random() * Math.max(1, total - 12));
-    const len   = Math.floor(Math.random() * 9) + 4;
-    const end   = Math.min(start + len, total);
-    // Avoid overlaps
-    const overlaps = usedRanges.some(([s, e]) => start < e && end > s);
-    if (overlaps) continue;
-    usedRanges.push([start, end]);
-    const chunk = words.slice(start, end).join(' ');
-    // Severity: earlier words more likely to be flagged high
-    const posRatio = start / total;
-    const sev = posRatio < 0.35 ? 'high' : posRatio < 0.65 ? 'medium' : 'low';
-    phrases.push({ text: chunk, severity: sev });
-  }
-
-  const sources = [
-    { url: 'https://en.wikipedia.org/wiki/Artificial_intelligence', similarity: Math.floor(score * 0.55) },
-    { url: 'https://scholar.google.com/scholar?q=plagiarism+detection', similarity: Math.floor(score * 0.38) },
-    { url: 'https://www.researchgate.net/publication/similar_works',    similarity: Math.floor(score * 0.22) },
-    { url: 'https://www.jstor.org/stable/academic_papers',              similarity: Math.floor(score * 0.12) }
-  ].filter(s => s.similarity > 2);
-
-  return { score, sources, matchedPhrases: phrases };
-}
 
 /* ────────────────────────────────────────
    RENDER RESULTS
    ──────────────────────────────────────── */
-function renderResults({ score, sources, matchedPhrases }) {
+function renderResults(data) {
   hideLoader();
   resultsEl.classList.add('visible');
 
-  // 1. Score ring
-  renderScoreRing(score);
+  const plag = data.plagiarism;
+  const ai   = data.ai_detection;
 
-  // 2. Highlighted text
-  renderHighlightedText(submittedText, matchedPhrases);
+  // Show partial error if present
+  if (data.error) {
+    partialErrorEl.style.display = 'flex';
+    partialErrorTxt.textContent = data.error;
+  } else {
+    partialErrorEl.style.display = 'none';
+  }
 
-  // 3. Tips
-  renderTips(score, matchedPhrases);
+  // Render plagiarism results
+  if (plag) {
+    renderPlagiarismScore(plag);
+    renderPlagiarismSentences(plag);
+    plagCardEl.style.display = '';
+  } else {
+    plagPctEl.textContent = '—';
+    plagTitleEl.textContent = 'Unavailable';
+    plagDescEl.textContent = 'Plagiarism scan could not be completed. See error above.';
+    plagChipsEl.innerHTML = '';
+    plagCardEl.style.display = 'none';
+  }
 
-  // 4. Sources
-  renderSources(sources);
+  // Render AI detection results
+  if (ai) {
+    renderAiScore(ai);
+    renderAiSentences(ai);
+    aiCardEl.style.display = '';
+  } else {
+    aiPctEl.textContent = '—';
+    aiTitleEl.textContent = 'Unavailable';
+    aiDescEl.textContent = 'AI detection could not be completed. See error above.';
+    aiChipsEl.innerHTML = '';
+    aiCardEl.style.display = 'none';
+  }
+
+  // Render Actionable Tips (from backend Groq Step 3)
+  const tips = data.actionable_tips || [];
+  if (tips.length > 0) {
+    tipsGridEl.innerHTML = tips.map(t => `
+      <div class="tip-item" role="article">
+        <div class="tip-header">
+          <div class="tip-icon tip-icon-${escapeHtml(t.color || 'cyan')}">${escapeHtml(t.icon || '💡')}</div>
+          <div>
+            <div class="tip-title">${escapeHtml(t.title || 'Actionable Tip')}</div>
+          </div>
+        </div>
+        <div class="tip-body">${escapeHtml(t.body || '')}</div>
+        <div class="tip-example">${escapeHtml(t.example || '')}</div>
+      </div>
+    `).join('');
+  } else {
+    tipsGridEl.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">No specific actionable insights available for this text.</div>`;
+  }
 }
 
-/* Score ring */
-function renderScoreRing(score) {
+
+/* ── Plagiarism Score Ring ── */
+function renderPlagiarismScore(plag) {
+  const score = Math.round(plag.score || 0);
   const circumference = 345;
   const offset = circumference - (score / 100) * circumference;
 
-  // Color coding
   let color, title, desc, chipClass, chipLabel;
   if (score < 15) {
     color = '#10b981'; title = '✅ Mostly Original'; chipClass = 'chip-green'; chipLabel = 'Low Risk';
-    desc  = 'Great news! Your content shows minimal plagiarism. Only minor overlaps detected.';
+    desc = 'Your content shows minimal plagiarism. Great work on originality!';
   } else if (score < 40) {
     color = '#f59e0b'; title = '⚠️ Moderate Plagiarism'; chipClass = 'chip-amber'; chipLabel = 'Moderate Risk';
-    desc  = 'Some sections share similarities with existing sources. Review highlighted areas and apply the tips below.';
+    desc = 'Some sections match existing sources. Review the flagged sentences below.';
   } else {
     color = '#ef4444'; title = '🚨 High Plagiarism'; chipClass = 'chip-red'; chipLabel = 'High Risk';
-    desc  = 'Significant portions of your text match existing sources. Immediate revision is recommended.';
+    desc = 'Significant portions match existing sources. Immediate revision recommended.';
   }
 
-  scorePctEl.textContent = `${score}%`;
-  scorePctEl.style.color = color;
-  scoreTitleEl.textContent = title;
-  scoreDescEl.textContent  = desc;
-  ringFill.style.stroke    = color;
-  setTimeout(() => { ringFill.style.strokeDashoffset = offset; }, 100);
+  plagPctEl.textContent = `${score}%`;
+  plagPctEl.style.color = color;
+  plagTitleEl.textContent = title;
+  plagDescEl.textContent = desc;
+  ringPlag.style.stroke = color;
+  setTimeout(() => { ringPlag.style.strokeDashoffset = offset; }, 100);
 
-  scoreChipsEl.innerHTML = `
+  plagChipsEl.innerHTML = `
     <span class="chip ${chipClass}">● ${chipLabel}</span>
-    <span class="chip chip-${score < 15 ? 'green' : score < 40 ? 'amber' : 'red'}">${score}% Similarity</span>
+    <span class="chip ${chipClass}">${score}% Match</span>
   `;
 }
 
-/* Highlighted text */
-function renderHighlightedText(text, phrases) {
-  let html = escapeHtml(text);
-  // Sort by length desc to avoid nested replacements
-  const seen = new Set();
-  phrases.sort((a, b) => b.text.length - a.text.length).forEach(({ text: ph, severity }) => {
-    if (!ph || seen.has(ph)) return;
-    seen.add(ph);
-    const escaped = escapeHtml(ph);
-    const regex   = new RegExp(escapeRegex(escaped), 'g');
-    html = html.replace(regex, `<mark class="${severity}" title="Potential plagiarism — ${severity} similarity">${escaped}</mark>`);
-  });
-  highlightedEl.innerHTML = html;
+
+/* ── AI Detection Score Ring ── */
+function renderAiScore(ai) {
+  // Winston AI returns score where higher = more likely human
+  // We want to show AI percentage, so: aiPct = 100 - humanScore
+  const humanScore = Math.round(ai.score || 0);
+  const aiScore = 100 - humanScore;
+  const circumference = 345;
+  const offset = circumference - (aiScore / 100) * circumference;
+
+  let color, title, desc, chipClass, chipLabel;
+  if (aiScore < 20) {
+    color = '#10b981'; title = '✅ Human Written'; chipClass = 'chip-green'; chipLabel = 'Human';
+    desc = 'This content appears to be written by a human. No significant AI patterns detected.';
+  } else if (aiScore < 60) {
+    color = '#f59e0b'; title = '⚠️ Mixed Content'; chipClass = 'chip-amber'; chipLabel = 'Likely Mixed';
+    desc = 'This content shows signs of AI assistance. Some sections may be AI-generated.';
+  } else {
+    color = '#ec4899'; title = '🤖 AI Generated'; chipClass = 'chip-pink'; chipLabel = 'AI Content';
+    desc = 'This content is likely generated by an AI model like ChatGPT, Claude, or Gemini.';
+  }
+
+  aiPctEl.textContent = `${aiScore}%`;
+  aiPctEl.style.color = color;
+  aiTitleEl.textContent = title;
+  aiDescEl.textContent = desc;
+  ringAi.style.stroke = color;
+  setTimeout(() => { ringAi.style.strokeDashoffset = offset; }, 100);
+
+  aiChipsEl.innerHTML = `
+    <span class="chip ${chipClass}">● ${chipLabel}</span>
+    <span class="chip ${chipClass}">${aiScore}% AI</span>
+    <span class="chip chip-blue">${humanScore}% Human</span>
+  `;
 }
 
-/* Tips */
-function renderTips(score, matchedPhrases) {
-  const highCount = matchedPhrases.filter(p => p.severity === 'high').length;
-  const tips = getTips(score, highCount);
-  tipsGridEl.innerHTML = tips.map(t => `
-    <div class="tip-item" role="article">
-      <div class="tip-header">
-        <div class="tip-icon tip-icon-${t.color}">${t.icon}</div>
-        <div>
-          <div class="tip-title">${t.title}</div>
-        </div>
-      </div>
-      <div class="tip-body">${t.body}</div>
-      <div class="tip-example">${t.example}</div>
-    </div>
-  `).join('');
-}
 
-/* Sources */
-function renderSources(sources) {
-  if (!sources.length) {
-    sourceListEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No external sources detected.</p>';
+/* ── AI Sentence-Level View ── */
+function renderAiSentences(ai) {
+  const sentences = ai.sentences || [];
+  if (!sentences.length) {
+    aiSentencesEl.innerHTML = `
+      <div class="no-data">
+        <div class="no-data-icon">📝</div>
+        <p>No sentence-level data available.</p>
+      </div>`;
     return;
   }
-  sourceListEl.innerHTML = sources.map((s, i) => `
-    <div class="source-item">
-      <div class="source-rank">${i + 1}</div>
-      <span class="source-url" title="${escapeHtml(s.url)}">${escapeHtml(s.url)}</span>
-      <span class="source-pct">${s.similarity}%</span>
-    </div>
-  `).join('');
-}
 
-/* ────────────────────────────────────────
-   TIPS LIBRARY
-   ──────────────────────────────────────── */
-function getTips(score, highCount) {
-  const tips = [
-    {
-      icon: '✍️', color: 'violet',
-      title: 'Paraphrase & Refine',
-      body:  'Rewrite highlighted sections in your own unique voice. Focus on changing sentence structures and vocabulary while maintaining the core message.',
-      example: 'Original: "The study showed X."\nRewritten: "Research indicates that X is a primary factor."'
-    },
-    {
-      icon: '🧠', color: 'cyan',
-      title: 'Infuse Your Perspective',
-      body:  'Add your personal insights or professional analysis to the information you present. Original commentary is the best way to ensure 100% uniqueness.',
-      example: 'Merge data from sources → add a conclusion based on YOUR experience.'
-    },
-    {
-      icon: '💡', color: 'amber',
-      title: 'Synthesise Multiple Ideas',
-      body:  'Instead of just reporting one source, blend concepts from diverse references to create a new, comprehensive narrative that reflects your understanding.',
-      example: 'Combine 3+ viewpoints into a single, cohesive analysis.'
-    },
-    {
-      icon: '🔄', color: 'green',
-      title: 'Structure for Originality',
-      body:  'Restructure sentences and paragraphs. Break long segments into punchy bullet points or combine short sentences to improve flow and uniqueness.',
-      example: 'Passive voice → Active voice, or list format → Narrative flow.'
-    },
-    {
-      icon: '🔍', color: 'pink',
-      title: 'Deep-Dive Analysis',
-      body:  'Follow every external fact with an original explanation or "Why it matters" section. This adds value for your readers and reduces similarity scores.',
-      example: 'Fact/Quote → "This is significant because…" → Your 2-sentence analysis.'
+  aiSentencesEl.innerHTML = sentences.map((s, i) => {
+    const score = Math.round(s.score || 0);
+    const aiScore = 100 - score;
+    let cls, badgeCls, badgeLabel;
+    if (aiScore < 30) {
+      cls = 'human'; badgeCls = 'badge-human'; badgeLabel = 'Human';
+    } else if (aiScore < 65) {
+      cls = 'mixed'; badgeCls = 'badge-mixed'; badgeLabel = 'Likely AI';
+    } else {
+      cls = 'ai-gen'; badgeCls = 'badge-ai-gen'; badgeLabel = 'AI Generated';
     }
-  ];
 
-  // Always add these core tips; add an extra one for high scores
-  if (score > 35 || highCount > 1) {
-    tips.push({
-      icon: '🔍', color: 'amber',
-      title: 'Dynamic Vocabulary Refresh',
-      body:  'Swap out overused phrases with industry-specific synonyms. This helps in tailoring the content to your specific audience while avoiding generic matches.',
-      example: 'Flagged: "The results demonstrate significant improvements."\nFixed: "Findings reveal substantial gains in performance."'
-    });
-  }
-
-  if (score > 55) {
-    tips.unshift({
-      icon: '⚠️', color: 'red' ,
-      title: 'Consider a Full Rewrite',
-      body:  'With a high plagiarism score, the most effective strategy is to close all references, write your understanding from memory, and then fact-check with citations — without copying phrasing.',
-      example: 'Step 1: Read sources → Step 2: Close all tabs → Step 3: Write freely → Step 4: Add citations.'
-    });
-  }
-
-  return tips.slice(0, 6);
+    return `
+      <div class="sentence-item">
+        <div class="sentence-score">
+          <div class="sentence-score-val" style="color:${aiScore > 60 ? '#ec4899' : aiScore > 30 ? '#f59e0b' : '#10b981'}">${aiScore}%</div>
+          <div class="sentence-score-label">AI</div>
+        </div>
+        <div class="sentence-content">
+          <div class="sentence-text ${cls}">
+            ${escapeHtml(s.text || '')}
+            <span class="sentence-badge ${badgeCls}">${badgeLabel}</span>
+          </div>
+          ${s.rewrite_suggestion ? `<div class="sentence-rewrite">💡 ${escapeHtml(s.rewrite_suggestion)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
 }
+
+
+/* ── Plagiarism Sentence-Level View ── */
+function renderPlagiarismSentences(plag) {
+  const sentences = plag.sentences || [];
+  if (!sentences.length) {
+    plagSentencesEl.innerHTML = `
+      <div class="no-data">
+        <div class="no-data-icon">🔍</div>
+        <p>No sentence-level plagiarism data available.</p>
+      </div>`;
+    return;
+  }
+
+  plagSentencesEl.innerHTML = sentences.map((s, i) => {
+    const score = Math.round(s.score || 0);
+    let cls;
+    if (score < 20) cls = 'original';
+    else if (score < 60) cls = 'plag-low';
+    else cls = 'plag-high';
+
+    const sourceUrl = s.source_url || s.url || '';
+    const sourceHtml = sourceUrl
+      ? `<div class="sentence-source">🔗 <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(sourceUrl)}</a></div>`
+      : (score > 15 ? '<div class="sentence-source" style="color:var(--text-muted)">No specific source URL provided</div>' : '');
+
+    return `
+      <div class="sentence-item">
+        <div class="sentence-score">
+          <div class="sentence-score-val" style="color:${score > 60 ? '#ef4444' : score > 20 ? '#f59e0b' : '#10b981'}">${score}%</div>
+          <div class="sentence-score-label">match</div>
+        </div>
+        <div class="sentence-content">
+          <div class="sentence-text ${cls}">${escapeHtml(s.text || '')}</div>
+          ${sourceHtml}
+          ${s.rewrite_suggestion ? `<div class="sentence-rewrite">💡 ${escapeHtml(s.rewrite_suggestion)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
 
 /* ────────────────────────────────────────
    UI STATE HELPERS
@@ -379,9 +376,10 @@ function showLoader() {
   scanBtn.disabled = true;
   document.getElementById('input-section').style.display = 'none';
 
-  // Reset steps
+  // Reset
   loaderSteps.forEach(s => { s.classList.remove('active', 'done'); });
   loaderSteps[0].classList.add('active');
+  updateProgress(0);
 }
 
 function hideLoader() {
@@ -389,22 +387,40 @@ function hideLoader() {
   scanBtn.disabled = false;
 }
 
-function advanceLoaderStep(index) {
-  loaderSteps.forEach((s, i) => {
-    if (i < index) {
-      s.classList.remove('active');
-      s.classList.add('done');
-      s.querySelector('.step-icon').textContent = '✓';
-    } else if (i === index) {
-      s.classList.add('active');
-      s.querySelector('.step-icon').textContent = '';
-    }
-  });
+function updateProgress(pct) {
+  progressBar.style.width = `${pct}%`;
+  progressText.textContent = `${pct}%`;
+}
+
+function updateLoaderSteps(progress) {
+  if (progress >= 10) {
+    loaderSteps[0].classList.remove('active');
+    loaderSteps[0].classList.add('done');
+    loaderSteps[0].querySelector('.step-icon').textContent = '✓';
+    loaderSteps[1].classList.add('active');
+  }
+  if (progress >= 40) {
+    loaderSteps[1].classList.remove('active');
+    loaderSteps[1].classList.add('done');
+    loaderSteps[1].querySelector('.step-icon').textContent = '✓';
+    loaderSteps[2].classList.add('active');
+  }
+  if (progress >= 90) {
+    loaderSteps[2].classList.remove('active');
+    loaderSteps[2].classList.add('done');
+    loaderSteps[2].querySelector('.step-icon').textContent = '✓';
+    loaderSteps[3].classList.add('active');
+  }
+  if (progress >= 100) {
+    loaderSteps[3].classList.remove('active');
+    loaderSteps[3].classList.add('done');
+    loaderSteps[3].querySelector('.step-icon').textContent = '✓';
+  }
 }
 
 function showError(msg) {
   hideLoader();
-  clearInterval(pollTimer);
+  clearTimeout(pollTimer);
   errorEl.classList.add('visible');
   errorMsgEl.textContent = msg;
   document.getElementById('input-section').style.display = '';
@@ -412,23 +428,31 @@ function showError(msg) {
 }
 
 function resetToInput() {
-  clearInterval(pollTimer);
+  clearTimeout(pollTimer);
   currentScanId = null;
-  pollCount     = 0;
+  pollCount = 0;
   resultsEl.classList.remove('visible');
   errorEl.classList.remove('visible');
   loaderEl.classList.remove('visible');
   document.getElementById('input-section').style.display = '';
   scanBtn.disabled = false;
   textInput.focus();
+
+  // Reset loader steps
   loaderSteps.forEach(s => {
     s.classList.remove('active', 'done');
     s.querySelector('.step-icon').textContent = '';
   });
+
+  // Reset rings
+  ringPlag.style.strokeDashoffset = 345;
+  ringAi.style.strokeDashoffset = 345;
+
   requestAnimationFrame(() =>
     document.getElementById('input-section').scrollIntoView({ behavior: 'smooth' })
   );
 }
+
 
 /* ────────────────────────────────────────
    UTILITIES
@@ -439,10 +463,6 @@ function escapeHtml(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function shakeElement(el) {
@@ -466,13 +486,13 @@ document.head.appendChild(shakeStyle);
 
 function showToast(msg, type = 'info') {
   const t = document.createElement('div');
-  const colors = { info: '#06b6d4', warn: '#f59e0b', error: '#ef4444' };
+  const colors = { info: '#06b6d4', warn: '#f59e0b', error: '#ef4444', success: '#10b981' };
   t.style.cssText = `
     position:fixed; bottom:24px; right:24px; z-index:9999;
     background: #1e2336; color: #f1f5f9;
     border-left: 3px solid ${colors[type] || colors.info};
     padding: 14px 20px; border-radius: 10px;
-    font-size: 0.85rem; max-width: 340px;
+    font-size: 0.85rem; max-width: 360px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     animation: toast-in 0.3s cubic-bezier(0.16,1,0.3,1) both;
   `;
@@ -486,7 +506,7 @@ function showToast(msg, type = 'info') {
   `;
   document.head.appendChild(toastAnim);
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4500);
+  setTimeout(() => t.remove(), 5000);
 }
 
 /* ── Init ── */
