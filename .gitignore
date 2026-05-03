@@ -7,9 +7,26 @@ venv/
 ENV/
 env/
 
+# Node.js
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+frontend/dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs & Debug
+*.log
+server.log
+.agents/
+.agent/
+
 # OS files
 .DS_Store
 Thumbs.db
+*.swp
 
 # IDEs
 .vscode/
@@ -17,3 +34,4 @@ Thumbs.db
 
 # Local configuration
 .env
+*.local
