@@ -29,7 +29,8 @@ DEFAULT_GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
 WINSTON_PLAGIARISM_URL = "https://api.gowinston.ai/v2/plagiarism"
 WINSTON_AI_DETECT_URL  = "https://api.gowinston.ai/v2/ai-content-detection"
 
-PORT = 5050
+PORT = int(os.environ.get("PORT", 5050))
+
 
 # ── State & Protection ────────────────────────────────────────────────────────
 _scans = {}
@@ -267,5 +268,5 @@ def extract_text():
     except Exception as e: return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    print(f"\n✅  PlagiScan Core → http://localhost:{PORT}")
+    print(f"\n✅  PlagiScan Core → Running on port {PORT}")
     app.run(host="0.0.0.0", port=PORT, debug=False)
